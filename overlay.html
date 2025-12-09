@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Checklist Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family, Arial, sans-serif);
+            color: var(--text-color, #ffffff);
+            background: transparent;
+            overflow: hidden;
+            width: 400px;
+            min-height: 600px;
+            height: auto;
+        }
+
+        #container {
+            background: var(--background-color, rgba(0, 0, 0, 0.7));
+            border-radius: var(--border-radius, 5px);
+            padding: 15px;
+            min-height: 100%;
+            height: auto;
+            overflow: visible;
+            position: relative;
+        }
+
+        #items-container {
+            height: auto;
+            min-height: 100%;
+            overflow: visible;
+        }
+
+        /* Sub-Header Styles */
+        .sub-header {
+            margin: 20px 0 10px 0;
+            padding: 8px 12px;
+            background: var(--sub-header-background, rgba(255, 215, 0, 0.1));
+            border-left: 4px solid var(--sub-header-color, #FFD700);
+            border-radius: var(--border-radius, 5px);
+        }
+
+        .sub-header .header-text {
+            color: var(--sub-header-color, #FFD700);
+            font-size: 1.1em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* List Header Styles (for multi-list display) */
+        .list-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--progress-bar-color, #4CAF50);
+        }
+
+        /* Task Styles */
+        .task-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--border-radius, 5px);
+            transition: opacity 0.3s ease;
+        }
+
+        .task-item.completed {
+            opacity: 0.5;
+        }
+
+        .task-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--checkbox-color, #4CAF50);
+            border-radius: 4px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox.checked {
+            background: var(--checkbox-color, #4CAF50);
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .task-name {
+            font-size: var(--font-size, 18px);
+            font-weight: 500;
+            flex-grow: 1;
+        }
+
+        .task-name.completed {
+            text-decoration: line-through;
+        }
+
+        .progress-section {
+            display: flex;
+            align-items: center;
+            margin-left: 34px;
+        }
+
+        .progress-bar-container {
+            flex-grow: 1;
+            height: 20px;
+            background: var(--progress-bar-background, rgba(255, 255, 255, 0.2));
+            border-radius: 10px;
+            overflow: hidden;
+            margin-right: 10px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--progress-bar-color, #4CAF50);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .progress-counter {
+            font-size: 14px;
+            white-space: nowrap;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        #error-message {
+            color: #ff6b6b;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        #cors-notice {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            color: #ffc107;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        #cors-notice h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        #cors-notice ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="items-container"></div>
+        <div id="error-message" style="display: none;"></div>
+        <div id="cors-notice" style="display: none;">
+            <h3>⚠️ Browser CORS Restriction</h3>
+            <p><strong>This is expected!</strong> Web browsers block local file access for security.</p>
+            <p><strong>This overlay WILL work in OBS!</strong></p>
+            <ul>
+                <li>In OBS: Add → Browser Source → Local File</li>
+                <li>Browse to this HTML file</li>
+                <li>It will work perfectly in OBS!</li>
+            </ul>
+            <p style="margin-top: 10px; font-size: 12px;">To test in browser, you need to run a local web server. But OBS doesn't have this restriction.</p>
+        </div>
+    </div>
+
+    <script>
+        const DATA_FILE = 'checklist-data.json';
+        const POLL_INTERVAL = 500;
+        
+        let config = null;
+        let isOBS = false;
+        let scrolling = false;
+        let scrollPosition = 0;
+        let maxScroll = 0;
+        let scrollDirection = 1; // 1 = down, -1 = up
+        let currentListIndex = 0;
+        let scrollAnimationFrame = null;
+        let pauseTimeout = null;
+        
+        // Simple logger for overlay
+        const Logger = {
+            log: function(message) {
+                // Only log if in development/debugging
+                // In production OBS, this does nothing
+                if (typeof console !== 'undefined' && !isOBS) {
+                    console.log('[Overlay]', message);
+                }
+            }
+        };
+
+        // Detect if running in OBS
+        function detectOBS() {
+            isOBS = typeof window.obsstudio !== 'undefined';
+            const ua = navigator.userAgent.toLowerCase();
+            isOBS = isOBS || ua.includes('obs');
+            return isOBS;
+        }
+
+        // Apply theme variables
+        function applyTheme(theme) {
+            const root = document.documentElement;
+            root.style.setProperty('--background-color', theme.backgroundColor);
+            root.style.setProperty('--text-color', theme.textColor);
+            root.style.setProperty('--progress-bar-color', theme.progressBarColor);
+            root.style.setProperty('--progress-bar-background', theme.progressBarBackground);
+            root.style.setProperty('--checkbox-color', theme.checkboxColor);
+            root.style.setProperty('--font-family', theme.fontFamily);
+            root.style.setProperty('--font-size', theme.fontSize);
+            root.style.setProperty('--border-radius', theme.borderRadius);
+            root.style.setProperty('--sub-header-color', theme.subHeaderColor || '#FFD700');
+            root.style.setProperty('--sub-header-background', theme.subHeaderBackground || 'rgba(255, 215, 0, 0.1)');
+            
+            // Apply overlay opacity to body element
+            const opacity = config?.settings?.overlayOpacity !== undefined ? config.settings.overlayOpacity : 1.0;
+            document.body.style.opacity = opacity;
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            const container = document.getElementById('items-container');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            container.style.display = 'none';
+            console.error('Overlay Error:', message);
+        }
+
+        // Show CORS notice
+        function showCORSNotice() {
+            document.getElementById('cors-notice').style.display = 'block';
+            document.getElementById('items-container').style.display = 'none';
+        }
+
+        // Render the checklist
+        function renderChecklist() {
+            if (!config) {
+                showError('Config not loaded');
+                return;
+            }
+
+            // Support both single and multiple active lists
+            let activeListIds = [];
+            if (config.settings.activeListIds && config.settings.activeListIds.length > 0) {
+                activeListIds = config.settings.activeListIds;
+            } else {
+                activeListIds = [config.settings.activeListId];
+            }
+
+            // Hide error/CORS notice if showing
+            document.getElementById('error-message').style.display = 'none';
+            document.getElementById('cors-notice').style.display = 'none';
+            document.getElementById('items-container').style.display = 'block';
+
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+
+            // For seamless infinite scroll, render content twice (or more if needed)
+            const renderCopies = config?.settings?.autoScrollEnabled ? 3 : 1;
+            
+            for (let copy = 0; copy < renderCopies; copy++) {
+                // Render each active list
+                activeListIds.forEach((listId, listIndex) => {
+                    const activeList = config.lists[listId];
+                    
+                    if (!activeList) {
+                        return;
+                    }
+
+                    // Add list header for every list
+                    const listHeaderDiv = document.createElement('div');
+                    listHeaderDiv.className = 'list-header';
+                    listHeaderDiv.style.marginTop = (listIndex === 0 && copy === 0) ? '0' : '25px';
+                    listHeaderDiv.textContent = activeList.name;
+                    container.appendChild(listHeaderDiv);
+
+                    let items = activeList.items || [];
+                    
+                    if (items.length === 0) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.style.cssText = 'color: #999; text-align: center; padding: 10px; font-style: italic;';
+                        emptyDiv.textContent = 'No tasks in this list';
+                        container.appendChild(emptyDiv);
+                        return;
+                    }
+                    
+                    // Filter for sequential mode
+                    if (config.settings.sequentialMode) {
+                        const firstIncomplete = items.find(item => !item.completed && !item.isSubHeader);
+                        items = firstIncomplete ? [firstIncomplete] : [];
+                    }
+
+                    items.forEach(item => {
+                        if (item.isSubHeader) {
+                            // Render as section header
+                            const headerDiv = document.createElement('div');
+                            headerDiv.className = 'sub-header';
+                            
+                            const headerText = document.createElement('div');
+                            headerText.className = 'header-text';
+                            headerText.textContent = item.name;
+                            
+                            headerDiv.appendChild(headerText);
+                            container.appendChild(headerDiv);
+                        } else {
+                            // Render as normal task
+                            const taskDiv = document.createElement('div');
+                            taskDiv.className = 'task-item' + (item.completed ? ' completed' : '');
+
+                            // Task header with checkbox and name
+                            const headerDiv = document.createElement('div');
+                            headerDiv.className = 'task-header';
+
+                            if (item.showCheckbox) {
+                                const checkbox = document.createElement('div');
+                                checkbox.className = 'checkbox' + (item.completed ? ' checked' : '');
+                                headerDiv.appendChild(checkbox);
+                            }
+
+                            const nameDiv = document.createElement('div');
+                            nameDiv.className = 'task-name' + (item.completed ? ' completed' : '');
+                            nameDiv.textContent = item.name;
+                            headerDiv.appendChild(nameDiv);
+
+                            taskDiv.appendChild(headerDiv);
+
+                            // Progress section
+                            if (item.showProgressBar || item.showCounter) {
+                                const progressDiv = document.createElement('div');
+                                progressDiv.className = 'progress-section';
+
+                                if (item.showProgressBar) {
+                                    const barContainer = document.createElement('div');
+                                    barContainer.className = 'progress-bar-container';
+                                    
+                                    const barFill = document.createElement('div');
+                                    barFill.className = 'progress-bar-fill';
+                                    const percentage = item.total > 0 ? (item.current / item.total) * 100 : 0;
+                                    barFill.style.width = `${Math.min(100, percentage)}%`;
+                                    
+                                    barContainer.appendChild(barFill);
+                                    progressDiv.appendChild(barContainer);
+                                }
+
+                                if (item.showCounter) {
+                                    const counter = document.createElement('div');
+                                    counter.className = 'progress-counter';
+                                    counter.textContent = `${item.current}/${item.total}`;
+                                    progressDiv.appendChild(counter);
+                                }
+
+                                taskDiv.appendChild(progressDiv);
+                            }
+
+                            container.appendChild(taskDiv);
+                        }
+                    });
+                });
+            }
+
+            // Show message if no lists have content
+            if (container.innerHTML === '') {
+                container.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">No tasks yet. Add tasks in the editor!</div>';
+            }
+
+            // Apply auto-scroll constraints if enabled
+            if (config?.settings?.autoScrollEnabled) {
+                // Set user-defined viewport height for scrolling
+                const viewportHeight = config.settings.scrollViewportHeight || 600;
+                document.body.style.height = viewportHeight + 'px';
+                document.body.style.overflow = 'hidden';  // Clip to viewport
+                document.getElementById('container').style.height = '100%';
+                document.getElementById('container').style.overflow = 'hidden';
+                
+                // CRITICAL: Set height on items-container so clientHeight returns correct value
+                document.getElementById('items-container').style.height = '100%';
+                document.getElementById('items-container').style.overflow = 'hidden';
+                
+                startAutoScroll();
+            } else {
+                // Remove height constraints - show all content
+                document.body.style.height = '';
+                document.body.style.minHeight = '';
+                document.body.style.overflow = '';  // Reset to CSS default
+                document.getElementById('container').style.height = 'auto';
+                document.getElementById('container').style.overflow = 'visible';
+                document.getElementById('items-container').style.height = 'auto';
+                document.getElementById('items-container').style.overflow = 'visible';
+                stopAutoScroll();
+            }
+        }
+
+        // Auto-scroll functionality
+        function startAutoScroll() {
+            if (!config?.settings?.autoScrollEnabled) return;
+            
+            const container = document.getElementById('items-container');
+            const settings = config.settings;
+            
+            // Force a reflow to ensure height is applied
+            container.offsetHeight;
+            
+            // Wait longer for DOM to fully render and heights to be set
+            setTimeout(() => {
+                // Check if we're in alternate lists mode
+                if (settings.alternateLists && config.settings.activeListIds && config.settings.activeListIds.length > 1) {
+                    startAlternateListsMode();
+                } else {
+                    startNormalScrollMode();
+                }
+            }, 200);
+        }
+
+        function startNormalScrollMode() {
+            const container = document.getElementById('items-container');
+            let containerHeight = container.clientHeight;
+            let contentHeight = container.scrollHeight;
+            
+            Logger.log(`=== SCROLL DEBUG ===`);
+            Logger.log(`Container height: ${containerHeight}px`);
+            Logger.log(`Content height: ${contentHeight}px`);
+            Logger.log(`Viewport setting: ${config.settings.scrollViewportHeight}px`);
+            Logger.log(`Active lists: ${config.settings.activeListIds?.length || 0}`);
+
+            // If container height is 0, heights aren't ready yet - retry
+            if (containerHeight === 0) {
+                Logger.log('Container height is 0, retrying in 100ms...');
+                setTimeout(() => startNormalScrollMode(), 100);
+                return;
+            }
+
+            // Check if content is too short for any scrolling
+            if (contentHeight <= containerHeight) {
+                Logger.log('❌ Content fits in container, no scroll needed');
+                Logger.log(`❌ Content: ${contentHeight}px, Viewport: ${containerHeight}px`);
+                return;
+            }
+
+            // For infinite scroll, calculate one cycle height
+            // We render 3 copies, so one cycle is 1/3 of total
+            const singleCycleHeight = contentHeight / 3;
+            maxScroll = singleCycleHeight;
+            
+            scrollDirection = config.settings.reverseScroll ? -1 : 1;
+            scrollPosition = scrollDirection === 1 ? 0 : maxScroll;
+            scrolling = true;
+            
+            Logger.log(`✅ Starting infinite scroll:`);
+            Logger.log(`   - Total content: ${contentHeight}px (3 copies)`);
+            Logger.log(`   - Single cycle: ${singleCycleHeight}px`);
+            Logger.log(`   - Max scroll: ${maxScroll}px`);
+            Logger.log(`   - Viewport: ${containerHeight}px`);
+            Logger.log(`   - Direction: ${scrollDirection === 1 ? 'down' : 'up'}`);
+            
+            autoScroll();
+        }
+
+        function startAlternateListsMode() {
+            Logger.log('Starting alternate lists mode');
+            currentListIndex = 0;
+            showNextList();
+        }
+
+        function showNextList() {
+            if (!config?.settings?.autoScrollEnabled || !config.settings.alternateLists) return;
+            
+            const activeListIds = config.settings.activeListIds;
+            if (!activeListIds || activeListIds.length === 0) return;
+
+            // Render only the current list (NO duplication in alternate mode)
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+            
+            const listId = activeListIds[currentListIndex];
+            const list = config.lists[listId];
+            
+            if (list) {
+                Logger.log(`Showing list ${currentListIndex + 1}/${activeListIds.length}: ${listId}`);
+                
+                // Render the list ONCE (not 3 times)
+                renderSingleList(listId, list, container, 0);
+                
+                // Wait for rendering, then check if scrolling is needed
+                setTimeout(() => {
+                    const containerHeight = container.clientHeight;
+                    const contentHeight = container.scrollHeight;
+                    
+                    if (contentHeight > containerHeight) {
+                        // Content needs scrolling - scroll from top to bottom once
+                        maxScroll = contentHeight - containerHeight;
+                        scrollDirection = config.settings.reverseScroll ? -1 : 1;
+                        scrollPosition = scrollDirection === 1 ? 0 : maxScroll;
+                        scrolling = true;
+                        
+                        Logger.log(`Scrolling list ${currentListIndex + 1}: will scroll ${maxScroll}px`);
+                        
+                        // Start scrolling
+                        autoScroll();
+                    } else {
+                        // List fits in viewport, just pause then move to next
+                        Logger.log(`List ${currentListIndex + 1} fits, pausing before next`);
+                        pauseTimeout = setTimeout(() => {
+                            moveToNextList();
+                        }, config.settings.pauseTimeBottom);
+                    }
+                }, 100);
+            }
+        }
+
+        function renderSingleList(listId, listData, container, copy) {
+            copy = copy || 0;
+            
+            // Add list header
+            const listHeaderDiv = document.createElement('div');
+            listHeaderDiv.className = 'list-header';
+            listHeaderDiv.style.marginTop = copy === 0 ? '0' : '25px';
+            listHeaderDiv.textContent = listData.name;
+            container.appendChild(listHeaderDiv);
+
+            let items = listData.items || [];
+            
+            if (config.settings.sequentialMode) {
+                const firstIncomplete = items.find(item => !item.completed && !item.isSubHeader);
+                items = firstIncomplete ? [firstIncomplete] : [];
+            }
+
+            items.forEach(item => {
+                if (item.isSubHeader) {
+                    // Render as section header
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'sub-header';
+                    
+                    const headerText = document.createElement('div');
+                    headerText.className = 'header-text';
+                    headerText.textContent = item.name;
+                    
+                    headerDiv.appendChild(headerText);
+                    container.appendChild(headerDiv);
+                } else {
+                    // Render as normal task
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = 'task-item' + (item.completed ? ' completed' : '');
+
+                    // Task header with checkbox and name
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'task-header';
+
+                    if (item.showCheckbox) {
+                        const checkbox = document.createElement('div');
+                        checkbox.className = 'checkbox' + (item.completed ? ' checked' : '');
+                        headerDiv.appendChild(checkbox);
+                    }
+
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'task-name' + (item.completed ? ' completed' : '');
+                    nameDiv.textContent = item.name;
+                    headerDiv.appendChild(nameDiv);
+
+                    taskDiv.appendChild(headerDiv);
+
+                    // Progress section
+                    if (item.showProgressBar || item.showCounter) {
+                        const progressDiv = document.createElement('div');
+                        progressDiv.className = 'progress-section';
+
+                        if (item.showProgressBar) {
+                            const barContainer = document.createElement('div');
+                            barContainer.className = 'progress-bar-container';
+                            
+                            const barFill = document.createElement('div');
+                            barFill.className = 'progress-bar-fill';
+                            const percentage = item.total > 0 ? (item.current / item.total) * 100 : 0;
+                            barFill.style.width = `${Math.min(100, percentage)}%`;
+                            
+                            barContainer.appendChild(barFill);
+                            progressDiv.appendChild(barContainer);
+                        }
+
+                        if (item.showCounter) {
+                            const counter = document.createElement('div');
+                            counter.className = 'progress-counter';
+                            counter.textContent = `${item.current}/${item.total}`;
+                            progressDiv.appendChild(counter);
+                        }
+
+                        taskDiv.appendChild(progressDiv);
+                    }
+
+                    container.appendChild(taskDiv);
+                }
+            });
+        }
+
+        function moveToNextList() {
+            if (!config?.settings?.autoScrollEnabled || !config.settings.alternateLists) return;
+            
+            stopAutoScroll();
+            currentListIndex = (currentListIndex + 1) % config.settings.activeListIds.length;
+            showNextList();
+        }
+
+        function autoScroll() {
+            if (!scrolling || !config?.settings?.autoScrollEnabled) return;
+
+            const container = document.getElementById('items-container');
+            const settings = config.settings;
+            const speed = settings.autoScrollSpeed || 30;
+
+            // Move scroll position
+            scrollPosition += (0.5 * scrollDirection);
+
+            // Check if we've reached the end in alternate lists mode
+            if (settings.alternateLists) {
+                if (scrollDirection === 1 && scrollPosition >= maxScroll) {
+                    // Reached bottom in alternate mode - stop, pause, move to next list
+                    scrolling = false;
+                    container.style.transform = `translateY(-${maxScroll}px)`;
+                    Logger.log(`List ${currentListIndex + 1} scrolled to bottom, pausing...`);
+                    pauseTimeout = setTimeout(() => {
+                        moveToNextList();
+                    }, settings.pauseTimeBottom);
+                    return;
+                } else if (scrollDirection === -1 && scrollPosition <= 0) {
+                    // Reached top in alternate mode (reverse scroll) - stop, pause, move to next list
+                    scrolling = false;
+                    container.style.transform = 'translateY(0px)';
+                    Logger.log(`List ${currentListIndex + 1} scrolled to top, pausing...`);
+                    pauseTimeout = setTimeout(() => {
+                        moveToNextList();
+                    }, settings.pauseTimeBottom);
+                    return;
+                }
+            }
+
+            // Seamless infinite scroll for normal mode
+            if (!settings.alternateLists) {
+                if (scrollDirection === 1) {
+                    // Scrolling down
+                    if (scrollPosition >= maxScroll) {
+                        // Reset to start of cycle for seamless loop
+                        scrollPosition = scrollPosition - maxScroll;
+                    }
+                } else {
+                    // Scrolling up
+                    if (scrollPosition <= 0) {
+                        // Reset to end of cycle for seamless loop
+                        scrollPosition = maxScroll + scrollPosition;
+                    }
+                }
+            }
+            
+            // Apply scroll transform
+            const currentScroll = settings.alternateLists ? 
+                Math.max(0, Math.min(scrollPosition, maxScroll)) : scrollPosition;
+            container.style.transform = `translateY(-${currentScroll}px)`;
+            container.style.transition = 'none'; // No transition for seamless effect
+
+            // Continue scrolling
+            scrollAnimationFrame = setTimeout(() => {
+                requestAnimationFrame(autoScroll);
+            }, 1000 / speed);
+        }
+
+        function stopAutoScroll() {
+            scrolling = false;
+            if (scrollAnimationFrame) {
+                clearTimeout(scrollAnimationFrame);
+                scrollAnimationFrame = null;
+            }
+            if (pauseTimeout) {
+                clearTimeout(pauseTimeout);
+                pauseTimeout = null;
+            }
+            const container = document.getElementById('items-container');
+            if (container) {
+                container.style.transform = 'translateY(0px)';
+            }
+        }
+
+        // Load config from file
+        async function loadConfig() {
+            try {
+                const response = await fetch(DATA_FILE + '?t=' + Date.now());
+                
+                if (!response.ok) {
+                    showError(`Failed to load ${DATA_FILE}: ${response.status}`);
+                    return;
+                }
+                
+                const newConfig = await response.json();
+                
+                // Check if config actually changed
+                const newConfigStr = JSON.stringify(newConfig);
+                const oldConfigStr = JSON.stringify(config);
+                
+                if (newConfigStr !== oldConfigStr) {
+                    config = newConfig;
+                    applyTheme(config.theme);
+                    renderChecklist();
+                }
+            } catch (error) {
+                // Check if this is a CORS error in a regular browser
+                if (error.message.includes('fetch') && !isOBS) {
+                    showCORSNotice();
+                } else {
+                    showError(`Error loading config: ${error.message}`);
+                }
+            }
+        }
+
+        // Initialize
+        detectOBS();
+        
+        loadConfig();
+        setInterval(loadConfig, POLL_INTERVAL);
+    </script>
+</body>
+</html>

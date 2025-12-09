@@ -1,0 +1,33 @@
+# Build outputs
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache/options
+.vs/
+
+# Development logs
+overlay-log.txt
+
+# User data (don't commit actual checklist data)
+checklist-data.json
+
+# Keep example data
+!checklist-data-examples.json
+
+# Test files
+test-*.html
+
+# Development documentation (keep selected ones in docs/)
+*_FIXED.md
+*_COMPLETE.md
+FIXES_APPLIED.md
+CRITICAL_FIXES.md

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overlay Preview - Theme Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .preview-box {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .preview-box h3 {
+            margin-top: 0;
+            color: #00ff88;
+        }
+
+        iframe {
+            border: 2px solid #444;
+            border-radius: 5px;
+            background: #000;
+        }
+
+        .info {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .theme-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .theme-card {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .theme-card:hover {
+            border-color: #00ff88;
+            transform: translateY(-2px);
+        }
+
+        .theme-card.active {
+            border-color: #00ff88;
+            background: #3a3a3a;
+        }
+
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-right: 10px;
+            border: 1px solid #555;
+        }
+
+        button {
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #00dd77;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 OBS Checklist Overlay Preview</h1>
+    
+    <div class="info">
+        <h2>How to Use This Preview</h2>
+        <p>This page lets you preview different themes and configurations before applying them to your actual overlay.</p>
+        <p><strong>Note:</strong> This preview uses the same HTML as the actual overlay. Changes made in the editor will reflect here when you refresh.</p>
+        
+        <div style="margin-top: 15px;">
+            <button onclick="window.location.reload()">🔄 Refresh Preview</button>
+            <button onclick="toggleFullscreen()">📺 Fullscreen Preview</button>
+        </div>
+    </div>
+
+    <h2>Current Overlay</h2>
+    <div class="preview-container">
+        <div class="preview-box">
+            <h3>Live Preview (400x600)</h3>
+            <iframe src="overlay.html" width="400" height="600" id="livePreview"></iframe>
+            <p style="color: #888; margin-top: 10px; font-size: 14px;">
+                This is how your overlay will appear in OBS with default dimensions.
+            </p>
+        </div>
+
+        <div class="preview-box">
+            <h3>Compact Preview (300x500)</h3>
+            <iframe src="overlay.html" width="300" height="500"></iframe>
+            <p style="color: #888; margin-top: 10px; font-size: 14px;">
+                Smaller size for minimalist layouts.
+            </p>
+        </div>
+
+        <div class="preview-box">
+            <h3>Wide Preview (500x400)</h3>
+            <iframe src="overlay.html" width="500" height="400"></iframe>
+            <p style="color: #888; margin-top: 10px; font-size: 14px;">
+                Horizontal layout option.
+            </p>
+        </div>
+    </div>
+
+    <h2 style="margin-top: 40px;">Theme Suggestions</h2>
+    <p>Click a theme card to see the color scheme. Copy these values into the Theme Settings dialog in the editor.</p>
+
+    <div class="theme-options">
+        <div class="theme-card">
+            <h4>🌲 Forest Green (Default)</h4>
+            <div>
+                <span class="color-swatch" style="background: rgba(0, 0, 0, 0.7);"></span>
+                <span class="color-swatch" style="background: #4CAF50;"></span>
+                <span class="color-swatch" style="background: #ffffff;"></span>
+            </div>
+            <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
+                Background: rgba(0, 0, 0, 0.7)<br>
+                Progress: #4CAF50<br>
+                Text: #ffffff
+            </p>
+        </div>
+
+        <div class="theme-card">
+            <h4>🔵 Ocean Blue</h4>
+            <div>
+                <span class="color-swatch" style="background: rgba(10, 25, 47, 0.85);"></span>
+                <span class="color-swatch" style="background: #2196F3;"></span>
+                <span class="color-swatch" style="background: #E3F2FD;"></span>
+            </div>
+            <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
+                Background: rgba(10, 25, 47, 0.85)<br>
+                Progress: #2196F3<br>
+                Text: #E3F2FD
+            </p>
+        </div>
+
+        <div class="theme-card">
+            <h4>🔴 Gaming Red</h4>
+            <div>
+                <span class="color-swatch" style="background: rgba(20, 0, 0, 0.8);"></span>
+                <span class="color-swatch" style="background: #F44336;"></span>
+                <span class="color-swatch" style="background: #FFEBEE;"></span>
+            </div>
+            <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
+                Background: rgba(20, 0, 0, 0.8)<br>
+                Progress: #F44336<br>
+                Text: #FFEBEE
+            </p>
+        </div>
+
+        <div class="theme-card">
+            <h4>💜 Purple Haze</h4>
+            <div>
+                <span class="color-swatch" style="background: rgba(25, 0, 35, 0.85);"></span>
+                <span class="color-swatch" style="background: #9C27B0;"></span>
+                <span class="color-swatch" style="background: #F3E5F5;"></span>
+            </div>
+            <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
+                Background: rgba(25, 0, 35, 0.85)<br>
+                Progress: #9C27B0<br>
+                Text: #F3E5F5
+            </p>
+        </div>
+
+        <div class="theme-card">
+            <h4>🟡 Golden Hour</h4>
+            <div>
+                <span class="color-swatch" style="background: rgba(40, 30, 0, 0.8);"></span>
+                <span class="color-swatch" style="background: #FFC107;"></span>
+                <span class="color-swatch" style="background: #FFFDE7;"></span>
+            </div>
+            <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
+                Background: rgba(40, 30, 0, 0.8)<br>
+                Progress: #FFC107<br>
+                Text: #FFFDE7
+            </p>
+        </div>
+
+        <div class="theme-card">
+            <h4>🎃 Neon Cyber</h4>
+            <div>
+                <span class="color-swatch" style="background: rgba(0, 0, 0, 0.9);"></span>
+                <span class="color-swatch" style="background: #00ff88;"></span>
+                <span class="color-swatch" style="background: #00ffff;"></span>
+            </div>
+            <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
+                Background: rgba(0, 0, 0, 0.9)<br>
+                Progress: #00ff88<br>
+                Text: #00ffff
+            </p>
+        </div>
+
+        <div class="theme-card">
+            <h4>🌑 Dark Minimal</h4>
+            <div>
+                <span class="color-swatch" style="background: rgba(0, 0, 0, 0.95);"></span>
+                <span class="color-swatch" style="background: #666666;"></span>
+                <span class="color-swatch" style="background: #cccccc;"></span>
+            </div>
+            <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
+                Background: rgba(0, 0, 0, 0.95)<br>
+                Progress: #666666<br>
+                Text: #cccccc
+            </p>
+        </div>
+
+        <div class="theme-card">
+            <h4>🌸 Pastel Pink</h4>
+            <div>
+                <span class="color-swatch" style="background: rgba(50, 30, 40, 0.8);"></span>
+                <span class="color-swatch" style="background: #FF4081;"></span>
+                <span class="color-swatch" style="background: #FCE4EC;"></span>
+            </div>
+            <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
+                Background: rgba(50, 30, 40, 0.8)<br>
+                Progress: #FF4081<br>
+                Text: #FCE4EC
+            </p>
+        </div>
+    </div>
+
+    <div class="info" style="margin-top: 40px;">
+        <h3>💡 Tips for Best Results</h3>
+        <ul>
+            <li><strong>Transparency:</strong> Use rgba() colors for backgrounds to blend with your stream</li>
+            <li><strong>Contrast:</strong> Ensure text color contrasts well with background for readability</li>
+            <li><strong>Size:</strong> Test different sizes to find what works best for your layout</li>
+            <li><strong>Performance:</strong> The overlay is lightweight and won't impact stream performance</li>
+            <li><strong>Updates:</strong> Changes in the editor appear within 0.5 seconds</li>
+        </ul>
+    </div>
+
+    <script>
+        function toggleFullscreen() {
+            const preview = document.getElementById('livePreview');
+            if (preview.requestFullscreen) {
+                preview.requestFullscreen();
+            }
+        }
+
+        // Auto-refresh preview every 2 seconds to show editor changes
+        setInterval(() => {
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                const src = iframe.src;
+                iframe.src = src;
+            });
+        }, 2000);
+    </script>
+</body>
+</html>

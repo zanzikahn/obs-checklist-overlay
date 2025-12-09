@@ -1,0 +1,155 @@
+{
+  "settings": {
+    "sequentialMode": false,
+    "autoScrollSpeed": 30,
+    "itemHeight": 80,
+    "activeListId": "gaming"
+  },
+  "theme": {
+    "backgroundColor": "rgba(0, 0, 0, 0.8)",
+    "textColor": "#ffffff",
+    "progressBarColor": "#00ff88",
+    "progressBarBackground": "rgba(255, 255, 255, 0.15)",
+    "checkboxColor": "#00ff88",
+    "fontFamily": "Segoe UI, Arial, sans-serif",
+    "fontSize": "20px",
+    "borderRadius": "8px"
+  },
+  "lists": {
+    "gaming": {
+      "name": "Gaming Session Goals",
+      "items": [
+        {
+          "id": "task1",
+          "name": "Gather Resources",
+          "completed": false,
+          "showCheckbox": true,
+          "showProgressBar": true,
+          "showCounter": true,
+          "current": 45,
+          "total": 100
+        },
+        {
+          "id": "task2",
+          "name": "Complete Main Quest",
+          "completed": false,
+          "showCheckbox": true,
+          "showProgressBar": false,
+          "showCounter": false,
+          "current": 0,
+          "total": 1
+        },
+        {
+          "id": "task3",
+          "name": "Level Up Skills",
+          "completed": false,
+          "showCheckbox": true,
+          "showProgressBar": true,
+          "showCounter": true,
+          "current": 12,
+          "total": 50
+        },
+        {
+          "id": "task4",
+          "name": "Defeat Boss",
+          "completed": true,
+          "showCheckbox": true,
+          "showProgressBar": false,
+          "showCounter": false,
+          "current": 1,
+          "total": 1
+        },
+        {
+          "id": "task5",
+          "name": "Explore Map Areas",
+          "completed": false,
+          "showCheckbox": true,
+          "showProgressBar": true,
+          "showCounter": true,
+          "current": 3,
+          "total": 10
+        }
+      ]
+    },
+    "speedrun": {
+      "name": "Speedrun Checklist",
+      "items": [
+        {
+          "id": "sr1",
+          "name": "Tutorial Skip",
+          "completed": true,
+          "showCheckbox": true,
+          "showProgressBar": false,
+          "showCounter": false,
+          "current": 1,
+          "total": 1
+        },
+        {
+          "id": "sr2",
+          "name": "Get Key Item",
+          "completed": false,
+          "showCheckbox": true,
+          "showProgressBar": false,
+          "showCounter": false,
+          "current": 0,
+          "total": 1
+        },
+        {
+          "id": "sr3",
+          "name": "Boss Rush",
+          "completed": false,
+          "showCheckbox": true,
+          "showProgressBar": true,
+          "showCounter": true,
+          "current": 2,
+          "total": 5
+        },
+        {
+          "id": "sr4",
+          "name": "Final Boss",
+          "completed": false,
+          "showCheckbox": true,
+          "showProgressBar": false,
+          "showCounter": false,
+          "current": 0,
+          "total": 1
+        }
+      ]
+    },
+    "stream": {
+      "name": "Stream Goals",
+      "items": [
+        {
+          "id": "st1",
+          "name": "New Followers",
+          "completed": false,
+          "showCheckbox": false,
+          "showProgressBar": true,
+          "showCounter": true,
+          "current": 47,
+          "total": 100
+        },
+        {
+          "id": "st2",
+          "name": "Subscriber Goal",
+          "completed": false,
+          "showCheckbox": false,
+          "showProgressBar": true,
+          "showCounter": true,
+          "current": 8,
+          "total": 20
+        },
+        {
+          "id": "st3",
+          "name": "Community Challenge",
+          "completed": false,
+          "showCheckbox": true,
+          "showProgressBar": true,
+          "showCounter": true,
+          "current": 250,
+          "total": 1000
+        }
+      ]
+    }
+  }
+}
