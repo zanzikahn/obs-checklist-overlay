@@ -117,7 +117,7 @@ namespace OBSChecklistEditor
 
             Label listNameLabel = new Label
             {
-                Text = "List Name:",
+                Text = "Displayed List Name:",
                 Location = new Point(10, 50),
                 AutoSize = true
             };
@@ -320,48 +320,53 @@ namespace OBSChecklistEditor
                 displayOrder = _config.settings.activeListIds ?? new List<string>();
             }
             
-            // Add ALL lists in displayOrder, respecting folder membership
-            foreach (var listId in displayOrder)
+            // Track which folder headers we've added
+            var addedFolderHeaders = new HashSet<string>();
+            
+            // Add folders first with headers
+            foreach (var folder in _config.folders)
             {
-                if (_config.lists.ContainsKey(listId))
+                // Add folder header (non-selectable separator)
+                _listSelector.Items.Add($"━━━ {folder.name} ━━━");
+                addedFolderHeaders.Add(folder.name);
+                
+                // Add lists in this folder (in displayOrder)
+                foreach (var listId in displayOrder)
                 {
-                    if (listToFolder.ContainsKey(listId))
+                    if (folder.listIds.Contains(listId) && _config.lists.ContainsKey(listId))
                     {
-                        // List is in a folder
-                        _listSelector.Items.Add($"[{listToFolder[listId]}] {listId}");
+                        _listSelector.Items.Add(listId);
                     }
-                    else
+                }
+                
+                // Add any lists in folder not in displayOrder
+                foreach (var listId in folder.listIds)
+                {
+                    if (!displayOrder.Contains(listId) && _config.lists.ContainsKey(listId))
                     {
-                        // List is at root
                         _listSelector.Items.Add(listId);
                     }
                 }
             }
             
-            // Then add any remaining lists not in displayOrder (newly created lists)
+            // Add Root header
+            _listSelector.Items.Add("━━━ Root ━━━");
+            
+            // Add root lists (lists not in any folder) in displayOrder
+            foreach (var listId in displayOrder)
+            {
+                if (!listToFolder.ContainsKey(listId) && _config.lists.ContainsKey(listId))
+                {
+                    _listSelector.Items.Add(listId);
+                }
+            }
+            
+            // Add any remaining root lists not in displayOrder
             foreach (var listKey in _config.lists.Keys)
             {
-                bool alreadyAdded = false;
-                foreach (var item in _listSelector.Items)
+                if (!listToFolder.ContainsKey(listKey) && !displayOrder.Contains(listKey))
                 {
-                    string itemStr = item.ToString() ?? "";
-                    if (itemStr == listKey || itemStr.EndsWith($" {listKey}"))
-                    {
-                        alreadyAdded = true;
-                        break;
-                    }
-                }
-                if (!alreadyAdded)
-                {
-                    // Add with folder prefix if in a folder
-                    if (listToFolder.ContainsKey(listKey))
-                    {
-                        _listSelector.Items.Add($"[{listToFolder[listKey]}] {listKey}");
-                    }
-                    else
-                    {
-                        _listSelector.Items.Add(listKey);
-                    }
+                    _listSelector.Items.Add(listKey);
                 }
             }
 
@@ -376,7 +381,16 @@ namespace OBSChecklistEditor
             }
             else if (_listSelector.Items.Count > 0)
             {
-                _listSelector.SelectedIndex = 0;
+                // Select first non-header item
+                for (int i = 0; i < _listSelector.Items.Count; i++)
+                {
+                    string item = _listSelector.Items[i].ToString() ?? "";
+                    if (!item.StartsWith("━━━"))
+                    {
+                        _listSelector.SelectedIndex = i;
+                        break;
+                    }
+                }
             }
         }
         
@@ -386,14 +400,10 @@ namespace OBSChecklistEditor
             
             string selected = _listSelector.SelectedItem.ToString() ?? "";
             
-            // Extract list ID from "[Folder] listId" format
-            if (selected.StartsWith("["))
+            // Skip folder headers (lines starting with ━━━)
+            if (selected.StartsWith("━━━"))
             {
-                int endBracket = selected.IndexOf("]");
-                if (endBracket > 0 && endBracket < selected.Length - 1)
-                {
-                    return selected.Substring(endBracket + 2).Trim();
-                }
+                return null;
             }
             
             // Otherwise it's just the list ID
@@ -405,7 +415,10 @@ namespace OBSChecklistEditor
             for (int i = 0; i < _listSelector.Items.Count; i++)
             {
                 string item = _listSelector.Items[i].ToString() ?? "";
-                if (item == listId || item.EndsWith($" {listId}"))
+                // Skip headers
+                if (item.StartsWith("━━━")) continue;
+                
+                if (item == listId)
                 {
                     _listSelector.SelectedIndex = i;
                     return;
@@ -484,6 +497,35 @@ namespace OBSChecklistEditor
         {
             if (_listSelector.SelectedItem != null)
             {
+                string selected = _listSelector.SelectedItem.ToString() ?? "";
+                
+                // If a folder header is selected, skip to next non-header item
+                if (selected.StartsWith("━━━"))
+                {
+                    // Find next non-header item
+                    int currentIndex = _listSelector.SelectedIndex;
+                    for (int i = currentIndex + 1; i < _listSelector.Items.Count; i++)
+                    {
+                        string item = _listSelector.Items[i].ToString() ?? "";
+                        if (!item.StartsWith("━━━"))
+                        {
+                            _listSelector.SelectedIndex = i;
+                            return;
+                        }
+                    }
+                    // If no item found after, try before
+                    for (int i = currentIndex - 1; i >= 0; i--)
+                    {
+                        string item = _listSelector.Items[i].ToString() ?? "";
+                        if (!item.StartsWith("━━━"))
+                        {
+                            _listSelector.SelectedIndex = i;
+                            return;
+                        }
+                    }
+                    return;
+                }
+                
                 var activeListId = GetSelectedListId();
                 if (activeListId != null)
                 {
