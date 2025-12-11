@@ -296,11 +296,21 @@ namespace OBSChecklistEditor
 
         private void RefreshListSelector()
         {
-            // Save current selection
-            string? currentSelection = _listSelector.SelectedItem?.ToString();
+            // Save current selection (clean list ID)
+            string? currentSelection = GetSelectedListId();
             
-            // Reload lists in the order defined by listDisplayOrder
+            // Reload lists with folder structure
             _listSelector.Items.Clear();
+            
+            // Create a map of which lists are in which folders
+            var listToFolder = new Dictionary<string, string>();
+            foreach (var folder in _config.folders)
+            {
+                foreach (var listId in folder.listIds)
+                {
+                    listToFolder[listId] = folder.name;
+                }
+            }
             
             // Use listDisplayOrder if available, otherwise fall back to activeListIds
             List<string> displayOrder = _config.settings.listDisplayOrder;
@@ -310,39 +320,95 @@ namespace OBSChecklistEditor
                 displayOrder = _config.settings.activeListIds ?? new List<string>();
             }
             
-            // First, add lists from display order
+            // Add folders in order
+            foreach (var folder in _config.folders)
+            {
+                // Add lists in this folder
+                foreach (var listId in folder.listIds)
+                {
+                    if (_config.lists.ContainsKey(listId))
+                    {
+                        _listSelector.Items.Add($"[{folder.name}] {listId}");
+                    }
+                }
+            }
+            
+            // Add root-level lists (not in any folder) from display order
             if (displayOrder.Count > 0)
             {
                 foreach (var listId in displayOrder)
                 {
-                    if (_config.lists.ContainsKey(listId))
+                    if (_config.lists.ContainsKey(listId) && !listToFolder.ContainsKey(listId))
                     {
                         _listSelector.Items.Add(listId);
                     }
                 }
             }
             
-            // Then add any remaining lists that aren't in displayOrder (newly created lists)
+            // Then add any remaining lists not in displayOrder or folders (newly created lists)
             foreach (var listKey in _config.lists.Keys)
             {
-                if (!_listSelector.Items.Contains(listKey))
+                bool alreadyAdded = false;
+                foreach (var item in _listSelector.Items)
+                {
+                    string itemStr = item.ToString() ?? "";
+                    if (itemStr == listKey || itemStr.EndsWith($" {listKey}"))
+                    {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+                if (!alreadyAdded)
                 {
                     _listSelector.Items.Add(listKey);
                 }
             }
 
-            // Restore selection or select active list
-            if (currentSelection != null && _listSelector.Items.Contains(currentSelection))
+            // Restore selection
+            if (currentSelection != null)
             {
-                _listSelector.SelectedItem = currentSelection;
+                SelectListById(currentSelection);
             }
-            else if (_listSelector.Items.Contains(_config.settings.activeListId))
+            else if (_config.settings.activeListId != null)
             {
-                _listSelector.SelectedItem = _config.settings.activeListId;
+                SelectListById(_config.settings.activeListId);
             }
             else if (_listSelector.Items.Count > 0)
             {
                 _listSelector.SelectedIndex = 0;
+            }
+        }
+        
+        private string? GetSelectedListId()
+        {
+            if (_listSelector.SelectedItem == null) return null;
+            
+            string selected = _listSelector.SelectedItem.ToString() ?? "";
+            
+            // Extract list ID from "[Folder] listId" format
+            if (selected.StartsWith("["))
+            {
+                int endBracket = selected.IndexOf("]");
+                if (endBracket > 0 && endBracket < selected.Length - 1)
+                {
+                    return selected.Substring(endBracket + 2).Trim();
+                }
+            }
+            
+            // Otherwise it's just the list ID
+            return selected;
+        }
+        
+        private void SelectListById(string listId)
+        {
+            for (int i = 0; i < _listSelector.Items.Count; i++)
+            {
+                string item = _listSelector.Items[i].ToString() ?? "";
+                if (item == listId || item.EndsWith($" {listId}"))
+                {
+                    _listSelector.SelectedIndex = i;
+                    return;
+                }
             }
         }
 
@@ -417,7 +483,7 @@ namespace OBSChecklistEditor
         {
             if (_listSelector.SelectedItem != null)
             {
-                var activeListId = _listSelector.SelectedItem.ToString();
+                var activeListId = GetSelectedListId();
                 if (activeListId != null)
                 {
                     _config.settings.activeListId = activeListId;
@@ -822,22 +888,16 @@ namespace OBSChecklistEditor
 
         private void ManageFoldersButton_Click(object? sender, EventArgs e)
         {
-            MessageBox.Show("Folder management feature:\n\n" +
-                "• Create folders to organize your lists\n" +
-                "• Drag lists into folders\n" +
-                "• Folders appear in the Active List dropdown\n\n" +
-                "This feature is coming soon!",
-                "Folders - Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            
-            // TODO: Implement FolderManagerDialog
-            // using (var dialog = new FolderManagerDialog(_config))
-            // {
-            //     if (dialog.ShowDialog() == DialogResult.OK)
-            //     {
-            //         SaveConfig();
-            //         RefreshListSelector();
-            //     }
-            // }
+            using (var dialog = new FolderManagerDialog(_config))
+            {
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    SaveConfig();
+                    RefreshListSelector();
+                    MessageBox.Show("Folder structure updated!", "Success",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
         }
     }
 }
