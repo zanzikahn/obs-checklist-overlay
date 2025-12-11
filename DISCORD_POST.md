@@ -71,7 +71,7 @@ The most impressive part? Claude maintained perfect context across 15+ sessions 
 
 ## Try It
 
-**Repository**: https://github.com/YOUR_USERNAME/obs-checklist-overlay
+**Repository**: https://github.com/Zanzikahn/obs-checklist-overlay
 
 **Quick Start**:
 1. Download the files from GitHub
@@ -81,7 +81,7 @@ The most impressive part? Claude maintained perfect context across 15+ sessions 
 
 **Or build from source**:
 ```bash
-git clone https://github.com/YOUR_USERNAME/obs-checklist-overlay.git
+git clone https://github.com/Zanzikahn/obs-checklist-overlay.git
 cd obs-checklist-overlay
 BUILD_AND_RUN.bat
 ```
