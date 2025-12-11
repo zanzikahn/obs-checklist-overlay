@@ -17,8 +17,7 @@ namespace OBSChecklistEditor
         private Button _moveDownButton = null!;
         private Button _moveToFolderButton = null!;
         private Button _moveToRootButton = null!;
-        private int _insertionIndex = -1;  // Track where insertion line should appear
-
+        
         public FolderManagerDialog(ChecklistConfig config)
         {
             _config = config;
@@ -39,7 +38,7 @@ namespace OBSChecklistEditor
             var instructionLabel = new Label
             {
                 Text = "Organize your lists into folders. Use Ctrl+Click or Shift+Click to select multiple lists.\n" +
-                       "Drag lists into folders. Lists can only be dropped into folders, not other lists.",
+                       "Use the buttons to move lists into folders or reorder items.",
                 Location = new Point(20, 15),
                 Width = 650,
                 Height = 40
@@ -52,19 +51,13 @@ namespace OBSChecklistEditor
                 Height = 380,
                 View = View.Details,
                 FullRowSelect = true,
-                AllowDrop = true,
+                AllowDrop = false,
                 HideSelection = false,
-                MultiSelect = true  // Enable multi-select
+                MultiSelect = true
             };
             _folderListView.Columns.Add("Type", 80);
             _folderListView.Columns.Add("Name", 400);
             _folderListView.SelectedIndexChanged += FolderListView_SelectedIndexChanged;
-            _folderListView.ItemDrag += FolderListView_ItemDrag;
-            _folderListView.DragEnter += FolderListView_DragEnter;
-            _folderListView.DragOver += FolderListView_DragOver;
-            _folderListView.DragDrop += FolderListView_DragDrop;
-            _folderListView.DragLeave += FolderListView_DragLeave;
-            _folderListView.Paint += FolderListView_Paint;
 
             // Button panel
             Panel buttonPanel = new Panel
@@ -357,190 +350,6 @@ namespace OBSChecklistEditor
             }
         }
 
-        // Drag and Drop
-        private void FolderListView_ItemDrag(object? sender, ItemDragEventArgs e)
-        {
-            // Allow dragging lists and folders, but not headers
-            var selectedItems = new List<ListViewItem>();
-            foreach (ListViewItem item in _folderListView.SelectedItems)
-            {
-                // Skip headers
-                if (item.Tag is string tagStr && tagStr == "ROOT_HEADER")
-                {
-                    continue;
-                }
-                
-                selectedItems.Add(item);
-            }
-
-            if (selectedItems.Count > 0)
-            {
-                // Use DataObject to properly format the drag data
-                DataObject data = new DataObject();
-                data.SetData("FolderManagerItems", selectedItems);
-                _folderListView.DoDragDrop(data, DragDropEffects.Move);
-            }
-        }
-
-        private void FolderListView_DragEnter(object? sender, DragEventArgs e)
-        {
-            if (e.Data != null && e.Data.GetDataPresent("FolderManagerItems"))
-            {
-                e.Effect = DragDropEffects.Move;
-            }
-            else
-            {
-                e.Effect = DragDropEffects.None;
-            }
-        }
-
-        private void FolderListView_DragOver(object? sender, DragEventArgs e)
-        {
-            if (e.Data == null) return;
-
-            Point cp = _folderListView.PointToClient(new Point(e.X, e.Y));
-            ListViewItem? targetItem = _folderListView.GetItemAt(cp.X, cp.Y);
-
-            // Default to no drop
-            e.Effect = DragDropEffects.None;
-            _insertionIndex = -1;
-
-            if (targetItem != null)
-            {
-                // Check if dropping onto a folder (for moving into folder)
-                if (targetItem.Tag is ListFolder)
-                {
-                    e.Effect = DragDropEffects.Move;
-                    _insertionIndex = -1;  // No insertion line for folder merge
-                }
-                else if (targetItem.Tag is string || targetItem.Tag is Tuple<string, ListFolder>)
-                {
-                    // Reordering - show insertion line
-                    e.Effect = DragDropEffects.Move;
-                    
-                    // Determine if inserting above or below target
-                    Rectangle bounds = targetItem.Bounds;
-                    int midPoint = bounds.Top + bounds.Height / 2;
-                    
-                    if (cp.Y < midPoint)
-                    {
-                        // Insert above
-                        _insertionIndex = targetItem.Index;
-                    }
-                    else
-                    {
-                        // Insert below
-                        _insertionIndex = targetItem.Index + 1;
-                    }
-                }
-            }
-            else
-            {
-                // Dropping in empty space at bottom - insert at end
-                if (_folderListView.Items.Count > 0)
-                {
-                    e.Effect = DragDropEffects.Move;
-                    _insertionIndex = _folderListView.Items.Count;
-                }
-            }
-
-            // Force repaint to show insertion line
-            _folderListView.Invalidate();
-        }
-
-        private void FolderListView_DragDrop(object? sender, DragEventArgs e)
-        {
-            if (e.Data == null) return;
-
-            var draggedItems = e.Data.GetData("FolderManagerItems") as List<ListViewItem>;
-            if (draggedItems == null || draggedItems.Count == 0) return;
-
-            Point cp = _folderListView.PointToClient(new Point(e.X, e.Y));
-            ListViewItem? targetItem = _folderListView.GetItemAt(cp.X, cp.Y);
-
-            // Clear insertion line
-            _insertionIndex = -1;
-            _folderListView.Invalidate();
-
-            // Check if dropping onto a folder (merge operation)
-            if (targetItem != null && targetItem.Tag is ListFolder targetFolder)
-            {
-                // Move all dragged lists to the target folder
-                foreach (var draggedItem in draggedItems)
-                {
-                    string listId;
-                    ListFolder? oldFolder = null;
-
-                    // Extract list ID and old folder
-                    if (draggedItem.Tag is Tuple<string, ListFolder> tuple)
-                    {
-                        listId = tuple.Item1;
-                        oldFolder = tuple.Item2;
-                    }
-                    else if (draggedItem.Tag is string id)
-                    {
-                        listId = id;
-                    }
-                    else
-                    {
-                        continue;
-                    }
-
-                    // Remove from old folder
-                    if (oldFolder != null)
-                    {
-                        oldFolder.listIds.Remove(listId);
-                    }
-
-                    // Add to new folder (avoid duplicates)
-                    if (!targetFolder.listIds.Contains(listId))
-                    {
-                        targetFolder.listIds.Add(listId);
-                    }
-                }
-
-                // Reload the list view
-                LoadFolderList();
-            }
-            else if (_insertionIndex >= 0)
-            {
-                // Reordering operation
-                // Get indices of dragged items
-                var draggedIndices = draggedItems.Select(item => item.Index).OrderBy(i => i).ToList();
-                
-                // Remove dragged items from ListView (in reverse order to maintain indices)
-                foreach (var index in draggedIndices.OrderByDescending(i => i))
-                {
-                    _folderListView.Items.RemoveAt(index);
-                }
-                
-                // Adjust insertion index based on removed items
-                int adjustedIndex = _insertionIndex;
-                foreach (var removedIndex in draggedIndices)
-                {
-                    if (removedIndex < _insertionIndex)
-                    {
-                        adjustedIndex--;
-                    }
-                }
-                
-                // Insert items at new location
-                for (int i = 0; i < draggedItems.Count; i++)
-                {
-                    _folderListView.Items.Insert(adjustedIndex + i, draggedItems[i]);
-                }
-                
-                // Rebuild config structure from ListView order
-                RebuildConfigFromListView();
-                
-                // Reselect moved items
-                foreach (var item in draggedItems)
-                {
-                    item.Selected = true;
-                }
-            }
-        }
-
         private void NewFolderButton_Click(object? sender, EventArgs e)
         {
             string folderName = PromptForInput("New Folder", "Enter folder name:", $"Folder {_config.folders.Count + 1}");
@@ -672,6 +481,9 @@ namespace OBSChecklistEditor
             _folderListView.Items.RemoveAt(selectedIndex);
             _folderListView.Items.Insert(selectedIndex - 1, item);
             item.Selected = true;
+            
+            // Rebuild config to update listDisplayOrder
+            RebuildConfigFromListView();
         }
 
         private void MoveDownButton_Click(object? sender, EventArgs e)
@@ -684,6 +496,9 @@ namespace OBSChecklistEditor
             _folderListView.Items.RemoveAt(selectedIndex);
             _folderListView.Items.Insert(selectedIndex + 1, item);
             item.Selected = true;
+            
+            // Rebuild config to update listDisplayOrder
+            RebuildConfigFromListView();
         }
 
         private void OkButton_Click(object? sender, EventArgs e)
@@ -693,59 +508,6 @@ namespace OBSChecklistEditor
             
             // Clean up empty folders if any
             _config.folders.RemoveAll(f => f.listIds.Count == 0);
-        }
-
-        private void FolderListView_DragLeave(object? sender, EventArgs e)
-        {
-            // Clear insertion line when drag leaves
-            _insertionIndex = -1;
-            _folderListView.Invalidate();
-        }
-
-        private void FolderListView_Paint(object? sender, PaintEventArgs e)
-        {
-            // Draw insertion line if drag is active
-            if (_insertionIndex >= 0 && _insertionIndex <= _folderListView.Items.Count)
-            {
-                int y;
-                if (_insertionIndex < _folderListView.Items.Count)
-                {
-                    // Draw above the item at insertionIndex
-                    var item = _folderListView.Items[_insertionIndex];
-                    y = item.Bounds.Top;
-                }
-                else
-                {
-                    // Draw at bottom
-                    var lastItem = _folderListView.Items[_folderListView.Items.Count - 1];
-                    y = lastItem.Bounds.Bottom;
-                }
-
-                // Draw blue insertion line
-                using (Pen pen = new Pen(Color.Blue, 2))
-                {
-                    e.Graphics.DrawLine(pen, 0, y, _folderListView.Width, y);
-                }
-
-                // Draw arrow indicators on both ends
-                using (Brush brush = new SolidBrush(Color.Blue))
-                {
-                    Point[] leftArrow = new Point[]
-                    {
-                        new Point(5, y),
-                        new Point(15, y - 5),
-                        new Point(15, y + 5)
-                    };
-                    Point[] rightArrow = new Point[]
-                    {
-                        new Point(_folderListView.Width - 5, y),
-                        new Point(_folderListView.Width - 15, y - 5),
-                        new Point(_folderListView.Width - 15, y + 5)
-                    };
-                    e.Graphics.FillPolygon(brush, leftArrow);
-                    e.Graphics.FillPolygon(brush, rightArrow);
-                }
-            }
         }
 
         private void RebuildConfigFromListView()
