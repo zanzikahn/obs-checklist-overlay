@@ -661,6 +661,13 @@ namespace OBSChecklistEditor
 
         private void RebuildConfigFromListView()
         {
+            // IMPORTANT: Store original folders BEFORE clearing to preserve collapsed folder contents
+            var originalFolders = new Dictionary<string, ListFolder>();
+            foreach (var folder in _config.folders)
+            {
+                originalFolders[folder.id] = folder;
+            }
+            
             // Clear existing folder structure
             _config.folders.Clear();
             
@@ -680,23 +687,22 @@ namespace OBSChecklistEditor
                         _config.folders.Add(currentFolder);
                     }
                     
-                    // Start a new folder
+                    // Start a new folder - preserve ALL lists from original folder
+                    var originalFolder = originalFolders.ContainsKey(folder.id) ? originalFolders[folder.id] : null;
+                    
                     currentFolder = new ListFolder
                     {
                         id = folder.id,
                         name = folder.name,
-                        listIds = new List<string>(),
+                        listIds = originalFolder?.listIds ?? new List<string>(),  // Preserve all lists including hidden
                         isExpanded = folder.isExpanded
                     };
                 }
                 else if (item.Tag is Tuple<string, ListFolder> tuple)
                 {
-                    // List in a folder
+                    // List in a folder (visible) - just add to display order
                     string listId = tuple.Item1;
-                    if (currentFolder != null)
-                    {
-                        currentFolder.listIds.Add(listId);
-                    }
+                    
                     // Add to display order
                     _config.settings.listDisplayOrder.Add(listId);
                 }
@@ -721,6 +727,18 @@ namespace OBSChecklistEditor
             if (currentFolder != null)
             {
                 _config.folders.Add(currentFolder);
+            }
+            
+            // Add any lists that were in collapsed folders to listDisplayOrder
+            foreach (var folder in _config.folders)
+            {
+                foreach (var listId in folder.listIds)
+                {
+                    if (!_config.settings.listDisplayOrder.Contains(listId))
+                    {
+                        _config.settings.listDisplayOrder.Add(listId);
+                    }
+                }
             }
         }
 

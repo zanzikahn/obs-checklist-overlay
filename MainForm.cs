@@ -133,7 +133,7 @@ namespace OBSChecklistEditor
             _sequentialModeCheckBox = new CheckBox
             {
                 Text = "Sequential Mode (Only show next incomplete task)",
-                Location = new Point(300, 48),
+                Location = new Point(375, 48),  // Moved right to avoid overlap with textbox
                 Width = 400,
                 AutoSize = true
             };
