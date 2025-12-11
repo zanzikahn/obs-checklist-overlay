@@ -8,6 +8,7 @@ namespace OBSChecklistEditor
         public Settings settings { get; set; } = null!;
         public Theme theme { get; set; } = null!;
         public Dictionary<string, ChecklistData> lists { get; set; } = null!;
+        public List<ListFolder> folders { get; set; } = new List<ListFolder>(); // Folder structure for organizing lists
     }
 
     public class Settings
@@ -60,5 +61,13 @@ namespace OBSChecklistEditor
         
         // New property for sub-headers
         public bool isSubHeader { get; set; } = false;
+    }
+
+    public class ListFolder
+    {
+        public string id { get; set; } = null!;
+        public string name { get; set; } = null!;
+        public List<string> listIds { get; set; } = new List<string>(); // List IDs in this folder
+        public bool isExpanded { get; set; } = true; // UI state for editor
     }
 }

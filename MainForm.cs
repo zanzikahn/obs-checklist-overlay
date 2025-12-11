@@ -41,7 +41,7 @@ namespace OBSChecklistEditor
         private void InitializeComponents()
         {
             this.Text = "OBS Checklist Editor";
-            this.Width = 900;
+            this.Width = 1000;  // Increased from 900 to 1000
             this.Height = 700;
             this.StartPosition = FormStartPosition.CenterScreen;
 
@@ -63,7 +63,7 @@ namespace OBSChecklistEditor
             _listSelector = new ComboBox
             {
                 Location = new Point(90, 12),
-                Width = 150,
+                Width = 250,  // Increased from 150 to 250
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             _listSelector.SelectedIndexChanged += ListSelector_SelectedIndexChanged;
@@ -71,7 +71,7 @@ namespace OBSChecklistEditor
             Button renameListButton = new Button
             {
                 Text = "✏️",
-                Location = new Point(245, 11),
+                Location = new Point(345, 11),  // Moved from 245 to 345
                 Width = 35,
                 Height = 23
             };
@@ -82,7 +82,7 @@ namespace OBSChecklistEditor
             _addListButton = new Button
             {
                 Text = "New List",
-                Location = new Point(300, 10),
+                Location = new Point(400, 10),  // Moved from 300 to 400
                 Width = 80
             };
             _addListButton.Click += AddListButton_Click;
@@ -90,7 +90,7 @@ namespace OBSChecklistEditor
             _deleteListButton = new Button
             {
                 Text = "Delete List",
-                Location = new Point(390, 10),
+                Location = new Point(490, 10),  // Moved from 390 to 490
                 Width = 90
             };
             _deleteListButton.Click += DeleteListButton_Click;
@@ -98,12 +98,22 @@ namespace OBSChecklistEditor
             Button multiListButton = new Button
             {
                 Text = "📋 Multi-List",
-                Location = new Point(490, 10),
+                Location = new Point(590, 10),  // Moved from 490 to 590
                 Width = 100
             };
             multiListButton.Click += MultiListButton_Click;
             var multiListTooltip = new ToolTip();
             multiListTooltip.SetToolTip(multiListButton, "Select multiple lists to display in overlay");
+
+            Button manageFoldersButton = new Button
+            {
+                Text = "📁 Folders",
+                Location = new Point(700, 10),
+                Width = 90
+            };
+            manageFoldersButton.Click += ManageFoldersButton_Click;
+            var foldersTooltip = new ToolTip();
+            foldersTooltip.SetToolTip(manageFoldersButton, "Organize lists into folders");
 
             Label listNameLabel = new Label
             {
@@ -131,7 +141,7 @@ namespace OBSChecklistEditor
             _themeButton = new Button
             {
                 Text = "Theme Settings",
-                Location = new Point(700, 10),
+                Location = new Point(800, 10),  // Moved from 700
                 Width = 120
             };
             _themeButton.Click += ThemeButton_Click;
@@ -139,7 +149,7 @@ namespace OBSChecklistEditor
             Button autoScrollButton = new Button
             {
                 Text = "🔄 Auto-Scroll",
-                Location = new Point(700, 45),
+                Location = new Point(800, 45),  // Moved from 700
                 Width = 120
             };
             autoScrollButton.Click += AutoScrollButton_Click;
@@ -147,7 +157,7 @@ namespace OBSChecklistEditor
             autoScrollTooltip.SetToolTip(autoScrollButton, "Configure auto-scroll settings");
 
             topPanel.Controls.AddRange(new Control[] { 
-                listLabel, _listSelector, renameListButton, _addListButton, _deleteListButton, multiListButton,
+                listLabel, _listSelector, renameListButton, _addListButton, _deleteListButton, multiListButton, manageFoldersButton,
                 listNameLabel, _listNameTextBox, _sequentialModeCheckBox, _themeButton, autoScrollButton
             });
 
@@ -174,7 +184,8 @@ namespace OBSChecklistEditor
                 View = View.Details,
                 FullRowSelect = true,
                 GridLines = true,
-                MultiSelect = false
+                MultiSelect = false,
+                AllowDrop = true  // Enable drag and drop
             };
 
             _taskListView.Columns.Add("Task Name", 200);
@@ -185,6 +196,9 @@ namespace OBSChecklistEditor
             _taskListView.Columns.Add("Completed", 80);
             _taskListView.SelectedIndexChanged += TaskListView_SelectedIndexChanged;
             _taskListView.DoubleClick += EditTaskButton_Click;
+            _taskListView.ItemDrag += TaskListView_ItemDrag;
+            _taskListView.DragEnter += TaskListView_DragEnter;
+            _taskListView.DragDrop += TaskListView_DragDrop;
 
             // Button Panel
             Panel buttonPanel = new Panel
@@ -648,6 +662,73 @@ namespace OBSChecklistEditor
             _moveDownButton.Enabled = hasSelection && _taskListView.SelectedIndices[0] < _taskListView.Items.Count - 1;
         }
 
+        // Drag and Drop event handlers for tasks
+        private void TaskListView_ItemDrag(object? sender, ItemDragEventArgs e)
+        {
+            if (e.Item != null)
+            {
+                _taskListView.DoDragDrop(e.Item, DragDropEffects.Move);
+            }
+        }
+
+        private void TaskListView_DragEnter(object? sender, DragEventArgs e)
+        {
+            if (e.Data != null && e.Data.GetDataPresent(typeof(ListViewItem)))
+            {
+                e.Effect = DragDropEffects.Move;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        private void TaskListView_DragDrop(object? sender, DragEventArgs e)
+        {
+            if (_listSelector.SelectedItem == null) return;
+            if (e.Data == null) return;
+
+            var activeListId = _listSelector.SelectedItem.ToString();
+            if (activeListId == null || !_config.lists.ContainsKey(activeListId)) return;
+
+            // Get the dragged item
+            var draggedItem = e.Data.GetData(typeof(ListViewItem)) as ListViewItem;
+            if (draggedItem == null) return;
+
+            // Find the drop location
+            Point cp = _taskListView.PointToClient(new Point(e.X, e.Y));
+            ListViewItem? targetItem = _taskListView.GetItemAt(cp.X, cp.Y);
+
+            if (targetItem == null) return;
+
+            int draggedIndex = draggedItem.Index;
+            int targetIndex = targetItem.Index;
+
+            if (draggedIndex == targetIndex) return;
+
+            // Reorder in the config
+            var items = _config.lists[activeListId].items;
+            var task = items[draggedIndex];
+            items.RemoveAt(draggedIndex);
+
+            // Adjust target index if needed
+            if (draggedIndex < targetIndex)
+            {
+                targetIndex--;
+            }
+
+            items.Insert(targetIndex, task);
+
+            SaveConfig();
+            RefreshTaskList();
+
+            // Reselect the moved item
+            if (targetIndex < _taskListView.Items.Count)
+            {
+                _taskListView.Items[targetIndex].Selected = true;
+            }
+        }
+
         private void MultiListButton_Click(object? sender, EventArgs e)
         {
             // Ensure activeListIds is initialized
@@ -698,6 +779,26 @@ namespace OBSChecklistEditor
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
+        }
+
+        private void ManageFoldersButton_Click(object? sender, EventArgs e)
+        {
+            MessageBox.Show("Folder management feature:\n\n" +
+                "• Create folders to organize your lists\n" +
+                "• Drag lists into folders\n" +
+                "• Folders appear in the Active List dropdown\n\n" +
+                "This feature is coming soon!",
+                "Folders - Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            
+            // TODO: Implement FolderManagerDialog
+            // using (var dialog = new FolderManagerDialog(_config))
+            // {
+            //     if (dialog.ShowDialog() == DialogResult.OK)
+            //     {
+            //         SaveConfig();
+            //         RefreshListSelector();
+            //     }
+            // }
         }
     }
 }
