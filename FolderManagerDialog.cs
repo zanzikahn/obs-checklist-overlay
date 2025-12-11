@@ -58,6 +58,7 @@ namespace OBSChecklistEditor
             _folderListView.Columns.Add("Type", 80);
             _folderListView.Columns.Add("Name", 400);
             _folderListView.SelectedIndexChanged += FolderListView_SelectedIndexChanged;
+            _folderListView.DoubleClick += FolderListView_DoubleClick;
 
             // Button panel
             Panel buttonPanel = new Panel
@@ -198,8 +199,9 @@ namespace OBSChecklistEditor
             // STEP 1: Add all folders and their lists (folders appear FIRST)
             foreach (var folder in _config.folders)
             {
-                // Add folder header
-                var folderItem = new ListViewItem("📁 Folder");
+                // Add folder header with expand/collapse indicator
+                string expandIndicator = folder.isExpanded ? "▼" : "▶";
+                var folderItem = new ListViewItem($"{expandIndicator} 📁 Folder");
                 folderItem.SubItems.Add(folder.name);
                 folderItem.Tag = folder;
                 folderItem.Font = new Font(_folderListView.Font, FontStyle.Bold);
@@ -207,27 +209,31 @@ namespace OBSChecklistEditor
                 _folderListView.Items.Add(folderItem);
                 addedFolders.Add(folder.id);
                 
-                // Add lists in this folder (in displayOrder)
-                foreach (var listId in displayOrder)
+                // Only add lists if folder is expanded
+                if (folder.isExpanded)
                 {
-                    if (folder.listIds.Contains(listId) && _config.lists.ContainsKey(listId))
+                    // Add lists in this folder (in displayOrder)
+                    foreach (var listId in displayOrder)
                     {
-                        var listItem = new ListViewItem("  📄 List");
-                        listItem.SubItems.Add($"  {listId} - {_config.lists[listId].name}");
-                        listItem.Tag = new Tuple<string, ListFolder>(listId, folder);
-                        _folderListView.Items.Add(listItem);
+                        if (folder.listIds.Contains(listId) && _config.lists.ContainsKey(listId))
+                        {
+                            var listItem = new ListViewItem("  📄 List");
+                            listItem.SubItems.Add($"  {listId} - {_config.lists[listId].name}");
+                            listItem.Tag = new Tuple<string, ListFolder>(listId, folder);
+                            _folderListView.Items.Add(listItem);
+                        }
                     }
-                }
-                
-                // Add any lists in folder not in displayOrder
-                foreach (var listId in folder.listIds)
-                {
-                    if (!displayOrder.Contains(listId) && _config.lists.ContainsKey(listId))
+                    
+                    // Add any lists in folder not in displayOrder
+                    foreach (var listId in folder.listIds)
                     {
-                        var listItem = new ListViewItem("  📄 List");
-                        listItem.SubItems.Add($"  {listId} - {_config.lists[listId].name}");
-                        listItem.Tag = new Tuple<string, ListFolder>(listId, folder);
-                        _folderListView.Items.Add(listItem);
+                        if (!displayOrder.Contains(listId) && _config.lists.ContainsKey(listId))
+                        {
+                            var listItem = new ListViewItem("  📄 List");
+                            listItem.SubItems.Add($"  {listId} - {_config.lists[listId].name}");
+                            listItem.Tag = new Tuple<string, ListFolder>(listId, folder);
+                            _folderListView.Items.Add(listItem);
+                        }
                     }
                 }
             }
@@ -319,6 +325,22 @@ namespace OBSChecklistEditor
             {
                 _moveUpButton.Enabled = false;
                 _moveDownButton.Enabled = false;
+            }
+        }
+
+        private void FolderListView_DoubleClick(object? sender, EventArgs e)
+        {
+            // Toggle folder expansion on double-click
+            if (_folderListView.SelectedItems.Count != 1) return;
+            
+            var selectedItem = _folderListView.SelectedItems[0];
+            if (selectedItem.Tag is ListFolder folder)
+            {
+                // Toggle expansion
+                folder.isExpanded = !folder.isExpanded;
+                
+                // Reload to show/hide children
+                LoadFolderList();
             }
         }
 

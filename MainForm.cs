@@ -119,12 +119,13 @@ namespace OBSChecklistEditor
             {
                 Text = "Displayed List Name:",
                 Location = new Point(10, 50),
-                AutoSize = true
+                Width = 150,  // Set explicit width to prevent overlap
+                AutoSize = false
             };
 
             _listNameTextBox = new TextBox
             {
-                Location = new Point(90, 47),
+                Location = new Point(165, 47),  // Moved right to avoid overlap
                 Width = 200
             };
             _listNameTextBox.TextChanged += ListNameTextBox_TextChanged;
