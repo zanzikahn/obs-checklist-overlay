@@ -10,6 +10,7 @@ namespace OBSChecklistEditor
     {
         private ConfigManager _configManager = null!;
         private ChecklistConfig _config = null!;
+        private bool _isRefreshing = false;  // Flag to prevent event loops during refresh
         
         // UI Controls
         private ComboBox _listSelector = null!;
@@ -308,12 +309,22 @@ namespace OBSChecklistEditor
 
         private void RefreshTaskList()
         {
+            _isRefreshing = true;  // Set flag to prevent TextChanged from saving during refresh
+            
             _taskListView.Items.Clear();
 
-            if (_listSelector.SelectedItem == null) return;
+            if (_listSelector.SelectedItem == null)
+            {
+                _isRefreshing = false;
+                return;
+            }
 
             var activeListId = _listSelector.SelectedItem.ToString();
-            if (activeListId == null || !_config.lists.ContainsKey(activeListId)) return;
+            if (activeListId == null || !_config.lists.ContainsKey(activeListId))
+            {
+                _isRefreshing = false;
+                return;
+            }
 
             var activeList = _config.lists[activeListId];
             _listNameTextBox.Text = activeList.name;
@@ -346,6 +357,8 @@ namespace OBSChecklistEditor
                 item.Tag = task;
                 _taskListView.Items.Add(item);
             }
+            
+            _isRefreshing = false;  // Clear flag after refresh is complete
         }
 
         private void SaveConfig()
@@ -377,6 +390,9 @@ namespace OBSChecklistEditor
 
         private void ListNameTextBox_TextChanged(object? sender, EventArgs e)
         {
+            // Don't save if we're in the middle of refreshing the UI
+            if (_isRefreshing) return;
+            
             if (_listSelector.SelectedItem == null) return;
 
             var activeListId = _listSelector.SelectedItem.ToString();
