@@ -551,7 +551,7 @@ namespace OBSChecklistEditor
                 {
                     var nextItem = _folderListView.Items[i];
                     // Stop if we hit another folder or root
-                    if (nextItem.Tag is ListFolder || (nextItem.Tag is string s && s == "ROOT_HEADER"))
+                    if (nextItem.Tag is ListFolder || (nextItem.Tag is string rootTag && rootTag == "ROOT_HEADER"))
                     {
                         break;
                     }
@@ -568,7 +568,7 @@ namespace OBSChecklistEditor
                 }
                 
                 var targetItem = _folderListView.Items[targetIndex];
-                if (targetItem.Tag is string s && s == "ROOT_HEADER")
+                if (targetItem.Tag is string targetTag && targetTag == "ROOT_HEADER")
                 {
                     // Can't move folder below Root
                     return;
@@ -581,7 +581,7 @@ namespace OBSChecklistEditor
                     for (int i = targetIndex + 1; i < _folderListView.Items.Count; i++)
                     {
                         var nextItem = _folderListView.Items[i];
-                        if (nextItem.Tag is ListFolder || (nextItem.Tag is string str && str == "ROOT_HEADER"))
+                        if (nextItem.Tag is ListFolder || (nextItem.Tag is string nextRootTag && nextRootTag == "ROOT_HEADER"))
                         {
                             break;
                         }
@@ -613,7 +613,7 @@ namespace OBSChecklistEditor
                 // Moving a regular list item
                 // Don't allow moving into Root from a folder
                 var nextItem = _folderListView.Items[selectedIndex + 1];
-                if (nextItem.Tag is string s && s == "ROOT_HEADER")
+                if (nextItem.Tag is string nextTag && nextTag == "ROOT_HEADER")
                 {
                     return; // Can't jump folders
                 }
