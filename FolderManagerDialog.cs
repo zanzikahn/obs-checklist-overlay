@@ -179,53 +179,123 @@ namespace OBSChecklistEditor
                     listToFolder[listId] = folder;
                 }
             }
-
-            // Add folders and their lists
-            foreach (var folder in _config.folders)
+            
+            // Get display order
+            List<string> displayOrder = _config.settings.listDisplayOrder;
+            if (displayOrder == null || displayOrder.Count == 0)
             {
-                // Add folder header
-                var folderItem = new ListViewItem("📁 Folder");
-                folderItem.SubItems.Add(folder.name);
-                folderItem.Tag = folder;
-                folderItem.Font = new Font(folderItem.Font, FontStyle.Bold);
-                folderItem.BackColor = Color.LightGray;
-                _folderListView.Items.Add(folderItem);
-
-                // Add lists in this folder (indented visually)
-                foreach (var listId in folder.listIds)
+                // Fallback: build from folders then root
+                displayOrder = new List<string>();
+                foreach (var folder in _config.folders)
                 {
-                    if (_config.lists.ContainsKey(listId))
+                    displayOrder.AddRange(folder.listIds);
+                }
+                foreach (var kvp in _config.lists)
+                {
+                    if (!listToFolder.ContainsKey(kvp.Key))
                     {
-                        var listItem = new ListViewItem("  📄 List");
-                        listItem.SubItems.Add($"  {listId} - {_config.lists[listId].name}");
-                        listItem.Tag = new Tuple<string, ListFolder>(listId, folder);  // Store both list ID and parent folder
-                        _folderListView.Items.Add(listItem);
+                        displayOrder.Add(kvp.Key);
                     }
                 }
             }
 
-            // Add root-level lists
-            bool hasRootLists = false;
+            // Track which folders we've added headers for
+            var addedFolders = new HashSet<string>();
+            
+            // Add items in displayOrder
+            foreach (var listId in displayOrder)
+            {
+                if (_config.lists.ContainsKey(listId))
+                {
+                    if (listToFolder.ContainsKey(listId))
+                    {
+                        // List is in a folder
+                        var folder = listToFolder[listId];
+                        
+                        // Add folder header if not added yet
+                        if (!addedFolders.Contains(folder.id))
+                        {
+                            var folderItem = new ListViewItem("📁 Folder");
+                            folderItem.SubItems.Add(folder.name);
+                            folderItem.Tag = folder;
+                            folderItem.Font = new Font(_folderListView.Font, FontStyle.Bold);
+                            folderItem.BackColor = Color.LightGray;
+                            _folderListView.Items.Add(folderItem);
+                            addedFolders.Add(folder.id);
+                        }
+                        
+                        // Add list item
+                        var listItem = new ListViewItem("  📄 List");
+                        listItem.SubItems.Add($"  {listId} - {_config.lists[listId].name}");
+                        listItem.Tag = new Tuple<string, ListFolder>(listId, folder);
+                        _folderListView.Items.Add(listItem);
+                    }
+                    else
+                    {
+                        // Root list - add root header if not added yet
+                        if (!addedFolders.Contains("ROOT"))
+                        {
+                            var rootHeader = new ListViewItem("📁 Root");
+                            rootHeader.SubItems.Add("(Not in any folder)");
+                            rootHeader.Tag = "ROOT_HEADER";
+                            rootHeader.Font = new Font(_folderListView.Font, FontStyle.Bold);
+                            rootHeader.BackColor = Color.LightYellow;
+                            _folderListView.Items.Add(rootHeader);
+                            addedFolders.Add("ROOT");
+                        }
+                        
+                        var listItem = new ListViewItem("  📄 List");
+                        listItem.SubItems.Add($"  {listId} - {_config.lists[listId].name}");
+                        listItem.Tag = listId;
+                        _folderListView.Items.Add(listItem);
+                    }
+                }
+            }
+            
+            // Add any remaining lists not in displayOrder
             foreach (var kvp in _config.lists)
             {
-                if (!listToFolder.ContainsKey(kvp.Key))
+                if (!displayOrder.Contains(kvp.Key))
                 {
-                    if (!hasRootLists)
+                    if (listToFolder.ContainsKey(kvp.Key))
                     {
-                        // Add "Root" header
-                        var rootHeader = new ListViewItem("📁 Root");
-                        rootHeader.SubItems.Add("(Not in any folder)");
-                        rootHeader.Tag = "ROOT_HEADER";
-                        rootHeader.Font = new Font(_folderListView.Font, FontStyle.Bold);
-                        rootHeader.BackColor = Color.LightYellow;
-                        _folderListView.Items.Add(rootHeader);
-                        hasRootLists = true;
+                        // In a folder
+                        var folder = listToFolder[kvp.Key];
+                        if (!addedFolders.Contains(folder.id))
+                        {
+                            var folderItem = new ListViewItem("📁 Folder");
+                            folderItem.SubItems.Add(folder.name);
+                            folderItem.Tag = folder;
+                            folderItem.Font = new Font(_folderListView.Font, FontStyle.Bold);
+                            folderItem.BackColor = Color.LightGray;
+                            _folderListView.Items.Add(folderItem);
+                            addedFolders.Add(folder.id);
+                        }
+                        
+                        var listItem = new ListViewItem("  📄 List");
+                        listItem.SubItems.Add($"  {kvp.Key} - {kvp.Value.name}");
+                        listItem.Tag = new Tuple<string, ListFolder>(kvp.Key, folder);
+                        _folderListView.Items.Add(listItem);
                     }
-
-                    var listItem = new ListViewItem("  📄 List");
-                    listItem.SubItems.Add($"  {kvp.Key} - {kvp.Value.name}");
-                    listItem.Tag = kvp.Key;  // Just the list ID for root lists
-                    _folderListView.Items.Add(listItem);
+                    else
+                    {
+                        // At root
+                        if (!addedFolders.Contains("ROOT"))
+                        {
+                            var rootHeader = new ListViewItem("📁 Root");
+                            rootHeader.SubItems.Add("(Not in any folder)");
+                            rootHeader.Tag = "ROOT_HEADER";
+                            rootHeader.Font = new Font(_folderListView.Font, FontStyle.Bold);
+                            rootHeader.BackColor = Color.LightYellow;
+                            _folderListView.Items.Add(rootHeader);
+                            addedFolders.Add("ROOT");
+                        }
+                        
+                        var listItem = new ListViewItem("  📄 List");
+                        listItem.SubItems.Add($"  {kvp.Key} - {kvp.Value.name}");
+                        listItem.Tag = kvp.Key;
+                        _folderListView.Items.Add(listItem);
+                    }
                 }
             }
         }
@@ -682,6 +752,9 @@ namespace OBSChecklistEditor
         {
             // Clear existing folder structure
             _config.folders.Clear();
+            
+            // Also rebuild listDisplayOrder
+            _config.settings.listDisplayOrder = new List<string>();
 
             ListFolder? currentFolder = null;
             var rootLists = new List<string>();
@@ -712,11 +785,15 @@ namespace OBSChecklistEditor
                     {
                         currentFolder.listIds.Add(listId);
                     }
+                    // Add to display order
+                    _config.settings.listDisplayOrder.Add(listId);
                 }
                 else if (item.Tag is string listId)
                 {
                     // Root list
                     rootLists.Add(listId);
+                    // Add to display order
+                    _config.settings.listDisplayOrder.Add(listId);
                 }
                 else if (item.Tag is string && (string)item.Tag == "ROOT_HEADER")
                 {

@@ -320,32 +320,25 @@ namespace OBSChecklistEditor
                 displayOrder = _config.settings.activeListIds ?? new List<string>();
             }
             
-            // Add folders in order
-            foreach (var folder in _config.folders)
+            // Add ALL lists in displayOrder, respecting folder membership
+            foreach (var listId in displayOrder)
             {
-                // Add lists in this folder
-                foreach (var listId in folder.listIds)
+                if (_config.lists.ContainsKey(listId))
                 {
-                    if (_config.lists.ContainsKey(listId))
+                    if (listToFolder.ContainsKey(listId))
                     {
-                        _listSelector.Items.Add($"[{folder.name}] {listId}");
+                        // List is in a folder
+                        _listSelector.Items.Add($"[{listToFolder[listId]}] {listId}");
                     }
-                }
-            }
-            
-            // Add root-level lists (not in any folder) from display order
-            if (displayOrder.Count > 0)
-            {
-                foreach (var listId in displayOrder)
-                {
-                    if (_config.lists.ContainsKey(listId) && !listToFolder.ContainsKey(listId))
+                    else
                     {
+                        // List is at root
                         _listSelector.Items.Add(listId);
                     }
                 }
             }
             
-            // Then add any remaining lists not in displayOrder or folders (newly created lists)
+            // Then add any remaining lists not in displayOrder (newly created lists)
             foreach (var listKey in _config.lists.Keys)
             {
                 bool alreadyAdded = false;
@@ -360,7 +353,15 @@ namespace OBSChecklistEditor
                 }
                 if (!alreadyAdded)
                 {
-                    _listSelector.Items.Add(listKey);
+                    // Add with folder prefix if in a folder
+                    if (listToFolder.ContainsKey(listKey))
+                    {
+                        _listSelector.Items.Add($"[{listToFolder[listKey]}] {listKey}");
+                    }
+                    else
+                    {
+                        _listSelector.Items.Add(listKey);
+                    }
                 }
             }
 
