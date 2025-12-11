@@ -11,15 +11,22 @@ namespace OBSChecklistEditor
         private ListView _listView = null!;
         private Dictionary<string, ChecklistData> _allLists = null!;
         private List<string> _selectedListIds = new List<string>();
+        private List<string> _displayOrder = new List<string>();  // Complete display order
         private Button _moveUpButton = null!;
         private Button _moveDownButton = null!;
 
         public List<string> SelectedListIds => _selectedListIds;
 
-        public MultiListSelectorDialog(Dictionary<string, ChecklistData> allLists, List<string> currentlySelected)
+        public MultiListSelectorDialog(Dictionary<string, ChecklistData> allLists, List<string> currentlySelected, List<string>? displayOrder = null)
         {
             _allLists = allLists;
             _selectedListIds = new List<string>(currentlySelected);
+            
+            // Use provided display order, or fall back to selected items
+            _displayOrder = displayOrder != null && displayOrder.Count > 0 
+                ? new List<string>(displayOrder) 
+                : new List<string>(currentlySelected);
+                
             InitializeComponents();
             LoadLists();
         }
@@ -148,25 +155,25 @@ namespace OBSChecklistEditor
         {
             _listView.Items.Clear();
 
-            // First, add currently selected lists in their current order
-            foreach (var listId in _selectedListIds)
+            // Load lists in display order
+            foreach (var listId in _displayOrder)
             {
                 if (_allLists.ContainsKey(listId))
                 {
                     var item = new ListViewItem(listId);
                     item.SubItems.Add(_allLists[listId].name);
-                    item.Checked = true;
+                    item.Checked = _selectedListIds.Contains(listId);  // Check if in selected list
                     item.Tag = listId;
                     _listView.Items.Add(item);
                 }
             }
 
-            // Then add remaining lists that aren't selected
-            foreach (var kvp in _allLists.Where(kvp => !_selectedListIds.Contains(kvp.Key)))
+            // Then add any remaining lists that aren't in display order (newly created)
+            foreach (var kvp in _allLists.Where(kvp => !_displayOrder.Contains(kvp.Key)))
             {
                 var item = new ListViewItem(kvp.Key);
                 item.SubItems.Add(kvp.Value.name);
-                item.Checked = false;
+                item.Checked = _selectedListIds.Contains(kvp.Key);
                 item.Tag = kvp.Key;
                 _listView.Items.Add(item);
             }

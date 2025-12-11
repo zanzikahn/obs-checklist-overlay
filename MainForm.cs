@@ -762,7 +762,11 @@ namespace OBSChecklistEditor
                 _config.settings.activeListIds = new List<string> { _config.settings.activeListId };
             }
 
-            using (var dialog = new MultiListSelectorDialog(_config.lists, _config.settings.activeListIds))
+            // Pass both activeListIds (checked) and listDisplayOrder (complete order)
+            using (var dialog = new MultiListSelectorDialog(
+                _config.lists, 
+                _config.settings.activeListIds,
+                _config.settings.listDisplayOrder))  // Pass display order
             {
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
