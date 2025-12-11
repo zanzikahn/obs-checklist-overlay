@@ -299,13 +299,21 @@ namespace OBSChecklistEditor
             // Save current selection
             string? currentSelection = _listSelector.SelectedItem?.ToString();
             
-            // Reload lists in the order defined by activeListIds
+            // Reload lists in the order defined by listDisplayOrder
             _listSelector.Items.Clear();
             
-            // First, add lists that are in activeListIds in that order
-            if (_config.settings.activeListIds != null && _config.settings.activeListIds.Count > 0)
+            // Use listDisplayOrder if available, otherwise fall back to activeListIds
+            List<string> displayOrder = _config.settings.listDisplayOrder;
+            if (displayOrder == null || displayOrder.Count == 0)
             {
-                foreach (var listId in _config.settings.activeListIds)
+                // Fallback: use activeListIds for backwards compatibility
+                displayOrder = _config.settings.activeListIds ?? new List<string>();
+            }
+            
+            // First, add lists from display order
+            if (displayOrder.Count > 0)
+            {
+                foreach (var listId in displayOrder)
                 {
                     if (_config.lists.ContainsKey(listId))
                     {
@@ -314,7 +322,7 @@ namespace OBSChecklistEditor
                 }
             }
             
-            // Then add any remaining lists that aren't in activeListIds
+            // Then add any remaining lists that aren't in displayOrder (newly created lists)
             foreach (var listKey in _config.lists.Keys)
             {
                 if (!_listSelector.Items.Contains(listKey))
@@ -758,7 +766,15 @@ namespace OBSChecklistEditor
             {
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
+                    // Get the checked lists (for overlay display)
                     _config.settings.activeListIds = dialog.SelectedListIds;
+                    
+                    // Get the complete display order (all lists, checked and unchecked)
+                    var allListsInOrder = dialog.Tag as List<string>;
+                    if (allListsInOrder != null)
+                    {
+                        _config.settings.listDisplayOrder = allListsInOrder;
+                    }
                     
                     // Update single activeListId for backwards compatibility
                     if (_config.settings.activeListIds.Count > 0)

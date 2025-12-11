@@ -17,7 +17,8 @@ namespace OBSChecklistEditor
         public int autoScrollSpeed { get; set; }
         public int itemHeight { get; set; }
         public string activeListId { get; set; } = null!; // Legacy support
-        public List<string> activeListIds { get; set; } = new List<string>(); // Multiple active lists
+        public List<string> activeListIds { get; set; } = new List<string>(); // Multiple active lists for overlay
+        public List<string> listDisplayOrder { get; set; } = new List<string>(); // Order for dropdown display
         public double overlayOpacity { get; set; } = 1.0; // 0.0 to 1.0
         
         // Auto-scroll settings

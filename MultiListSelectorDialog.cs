@@ -267,13 +267,19 @@ namespace OBSChecklistEditor
         {
             _selectedListIds.Clear();
             
-            // Collect checked items in their current order
+            // Collect ALL items in their current display order (for dropdown)
+            // But only mark checked ones as active for overlay
+            List<string> allListsInOrder = new List<string>();
+            
             foreach (ListViewItem item in _listView.Items)
             {
-                if (item.Checked)
+                string listId = item.Tag?.ToString() ?? "";
+                if (!string.IsNullOrEmpty(listId))
                 {
-                    string listId = item.Tag?.ToString() ?? "";
-                    if (!string.IsNullOrEmpty(listId))
+                    allListsInOrder.Add(listId);
+                    
+                    // Only add checked items to selectedListIds (for overlay)
+                    if (item.Checked)
                     {
                         _selectedListIds.Add(listId);
                     }
@@ -285,7 +291,11 @@ namespace OBSChecklistEditor
                 MessageBox.Show("Please select at least one list to display!", 
                     "No Lists Selected", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 this.DialogResult = DialogResult.None;
+                return;
             }
+            
+            // Store the complete order separately (will be accessed via a property)
+            this.Tag = allListsInOrder;
         }
     }
 }
