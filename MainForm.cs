@@ -377,8 +377,14 @@ namespace OBSChecklistEditor
 
         private void ListNameTextBox_TextChanged(object? sender, EventArgs e)
         {
-            // Text changed event - for future use if needed
-            // Actual rename happens on button click
+            if (_listSelector.SelectedItem == null) return;
+
+            var activeListId = _listSelector.SelectedItem.ToString();
+            if (activeListId == null || !_config.lists.ContainsKey(activeListId)) return;
+
+            // Update the list's display name
+            _config.lists[activeListId].name = _listNameTextBox.Text;
+            SaveConfig();
         }
 
         private void RenameListButton_Click(object? sender, EventArgs e)
