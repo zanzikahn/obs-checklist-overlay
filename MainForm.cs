@@ -299,11 +299,28 @@ namespace OBSChecklistEditor
             // Save current selection
             string? currentSelection = _listSelector.SelectedItem?.ToString();
             
-            // Reload lists
+            // Reload lists in the order defined by activeListIds
             _listSelector.Items.Clear();
+            
+            // First, add lists that are in activeListIds in that order
+            if (_config.settings.activeListIds != null && _config.settings.activeListIds.Count > 0)
+            {
+                foreach (var listId in _config.settings.activeListIds)
+                {
+                    if (_config.lists.ContainsKey(listId))
+                    {
+                        _listSelector.Items.Add(listId);
+                    }
+                }
+            }
+            
+            // Then add any remaining lists that aren't in activeListIds
             foreach (var listKey in _config.lists.Keys)
             {
-                _listSelector.Items.Add(listKey);
+                if (!_listSelector.Items.Contains(listKey))
+                {
+                    _listSelector.Items.Add(listKey);
+                }
             }
 
             // Restore selection or select active list
@@ -750,7 +767,9 @@ namespace OBSChecklistEditor
                     }
                     
                     SaveConfig();
-                    MessageBox.Show($"{_config.settings.activeListIds.Count} list(s) selected for overlay display.",
+                    RefreshListSelector();  // Refresh dropdown to reflect new order
+                    MessageBox.Show($"{_config.settings.activeListIds.Count} list(s) selected for overlay display.\n" +
+                        "The Active List dropdown order has been updated.",
                         "Multi-List Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
