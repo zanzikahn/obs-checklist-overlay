@@ -295,7 +295,7 @@ namespace OBSChecklistEditor
             foreach (ListViewItem item in _folderListView.SelectedItems)
             {
                 // Skip headers
-                if (item.Tag is string && (string)item.Tag == "ROOT_HEADER")
+                if (item.Tag is string tagStr && tagStr == "ROOT_HEADER")
                 {
                     continue;
                 }
@@ -305,13 +305,16 @@ namespace OBSChecklistEditor
 
             if (selectedItems.Count > 0)
             {
-                _folderListView.DoDragDrop(selectedItems, DragDropEffects.Move);
+                // Use DataObject to properly format the drag data
+                DataObject data = new DataObject();
+                data.SetData("FolderManagerItems", selectedItems);
+                _folderListView.DoDragDrop(data, DragDropEffects.Move);
             }
         }
 
         private void FolderListView_DragEnter(object? sender, DragEventArgs e)
         {
-            if (e.Data != null && e.Data.GetDataPresent(typeof(List<ListViewItem>)))
+            if (e.Data != null && e.Data.GetDataPresent("FolderManagerItems"))
             {
                 e.Effect = DragDropEffects.Move;
             }
@@ -379,7 +382,7 @@ namespace OBSChecklistEditor
         {
             if (e.Data == null) return;
 
-            var draggedItems = e.Data.GetData(typeof(List<ListViewItem>)) as List<ListViewItem>;
+            var draggedItems = e.Data.GetData("FolderManagerItems") as List<ListViewItem>;
             if (draggedItems == null || draggedItems.Count == 0) return;
 
             Point cp = _folderListView.PointToClient(new Point(e.X, e.Y));
