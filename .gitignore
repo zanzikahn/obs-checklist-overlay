@@ -16,6 +16,7 @@ obj/
 
 # Development logs
 overlay-log.txt
+*.log
 
 # User data (don't commit actual checklist data)
 checklist-data.json
@@ -26,8 +27,12 @@ checklist-data.json
 # Test files
 test-*.html
 
-# Development documentation (keep selected ones in docs/)
-*_FIXED.md
-*_COMPLETE.md
-FIXES_APPLIED.md
-CRITICAL_FIXES.md
+# Temporary files
+*.tmp
+*.temp
+~$*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
