@@ -1,6 +1,6 @@
 # OBS Streaming Checklist Overlay
 
-A complete **OBS overlay system** for streamers to display interactive checklists during live streams. Built 100% with Claude (Sonnet 4).
+A complete **OBS overlay system** for streamers to display interactive checklists during live streams. Built 100% with Claude (Sonnet 4.5).
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Built with Claude](https://img.shields.io/badge/Built%20with-Claude-purple.svg)
